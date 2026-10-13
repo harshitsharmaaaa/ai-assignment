@@ -20,62 +20,146 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --radius-lg: var(--radius);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-sm: calc(var(--radius) - 4px);
+  --color-today: var(--followup-today);
+  --color-today-foreground: var(--followup-today-foreground);
+  --color-overdue: var(--followup-overdue);
+  --color-overdue-foreground: var(--followup-overdue-foreground);
+  --radius-lg: var(--radius-lg);
+  --radius-md: var(--radius-md);
+  --radius-sm: var(--radius-sm);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
 }
 
+/*
+ * Design-token layer (Phase C). One warm amber is reserved for "today", one
+ * unambiguous red for "overdue"; status hues stay muted so follow-up state
+ * always wins. Both palettes target WCAG AA (4.5:1 for body text).
+ */
 :root {
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.06);
+  --shadow-md: 0 8px 24px rgb(0 0 0 / 0.12);
+
+  --background: oklch(0.99 0.002 95);
+  --foreground: oklch(0.2 0.01 260);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.2 0.01 260);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --popover-foreground: oklch(0.2 0.01 260);
+  --primary: oklch(0.42 0.12 255);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.96 0.004 95);
+  --secondary-foreground: oklch(0.3 0.02 260);
+  --muted: oklch(0.96 0.004 95);
+  --muted-foreground: oklch(0.46 0.015 260);
+  --accent: oklch(0.95 0.01 95);
+  --accent-foreground: oklch(0.25 0.02 260);
+  --destructive: oklch(0.55 0.22 27);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.9 0.008 95);
+  --input: oklch(0.88 0.008 95);
+  --ring: oklch(0.55 0.12 255);
+
+  --followup-today: oklch(0.75 0.15 75);
+  --followup-today-foreground: oklch(0.35 0.1 60);
+  --followup-overdue: oklch(0.55 0.22 27);
+  --followup-overdue-foreground: oklch(0.55 0.22 27);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --background: oklch(0.18 0.01 260);
+  --foreground: oklch(0.94 0.005 260);
+  --card: oklch(0.22 0.012 260);
+  --card-foreground: oklch(0.94 0.005 260);
+  --popover: oklch(0.22 0.012 260);
+  --popover-foreground: oklch(0.94 0.005 260);
+  --primary: oklch(0.75 0.1 255);
+  --primary-foreground: oklch(0.18 0.01 260);
+  --secondary: oklch(0.27 0.015 260);
+  --secondary-foreground: oklch(0.94 0.005 260);
+  --muted: oklch(0.27 0.015 260);
+  --muted-foreground: oklch(0.72 0.01 260);
+  --accent: oklch(0.27 0.015 260);
+  --accent-foreground: oklch(0.94 0.005 260);
+  --destructive: oklch(0.65 0.18 22);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.65 0.1 255);
+
+  --followup-today: oklch(0.8 0.14 80);
+  --followup-today-foreground: oklch(0.88 0.12 80);
+  --followup-overdue: oklch(0.72 0.17 22);
+  --followup-overdue-foreground: oklch(0.78 0.15 22);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 8px 24px rgb(0 0 0 / 0.5);
 }
 
 @layer base {
   * {
     border-color: var(--color-border);
   }
+  html {
+    scroll-behavior: smooth;
+  }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family:
+      ui-sans-serif, -apple-system, "Segoe UI", Inter, Roboto,
+      "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+}
+
+@layer utilities {
+  /* Hide scrollbars for the horizontal filter chip row (keeps keyboard scroll). */
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* New timeline items + list rows: fast, subtle, once. */
+  @keyframes leadflow-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-enter {
+    animation: leadflow-in 180ms ease-out both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    .animate-enter,
+    .animate-pulse {
+      animation: none !important;
+    }
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+    }
   }
 }
