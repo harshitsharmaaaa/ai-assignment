@@ -165,7 +165,35 @@ Verified: required flows re-checked by code path (pinned order, add note ±
 follow-up, status persistence, add lead, filters, search, overdue red —
 all on unchanged endpoints/rules), `tsc`/`eslint`/`build` green.
 
-### Phase E — QA + docs → (this commit)
+### Phase E — QA + docs → `cc9d1b1` (log) + follow-ups below
+
+### Follow-up 1 — Timeline rail fix → `79205ec`
+
+User screenshot showed the rail floating left of the dots: the rail was a
+`border-l` on the `<ul>` (x 0–2 px) while dots sat at x 5 px and cards at
+x 24 px — rail | gap | dot | gap | card. Fix: per-item rail segments
+(`left-[9px] w-[2px]`, center x = 10 px = dot center) with `pb-2 last:pb-0`
+so segments join into one continuous line; the `<ul>` border was removed.
+Verified: `tsc` + `eslint` clean, `bun test` 28/28.
+
+### Follow-up 2 — Approved theme: Linear Dark → `5bf71cf`
+
+User picked **Linear Dark** from 4 researched options (Linear Dark, Attio
+Light, Stripe Clean, Pipeline Green; grounded in a web round-up of
+Linear/Attio/Stripe/Pipedrive/HubSpot CRM patterns). Applied:
+- Inter Variable via `@fontsource-variable/inter` (self-hosted woff2, no
+  build-time network fetch — keeps the offline-safe decision), 14 px base,
+  `cv11`/`ss01` features, tabular numerals on counts/times.
+- Near-black neutrals, single indigo accent (`oklch(0.53 0.15 277)` light /
+  `oklch(0.65 0.14 277)` dark) for interactive elements, hairline borders
+  instead of shadows for layering (dark `shadow-sm` removed), tight 4/6/8 px
+  radii via the existing token vars (no component changes needed).
+- Status badges restyled to dot + translucent tint (no saturated fills), so
+  amber-today / red-overdue always win; text tones kept at AA.
+- Amber/red follow-up semantics unchanged. Both light and dark palettes ship;
+  toggle stays in the header.
+Verified: `tsc` + `eslint` clean, `bun test` 28/28, `next build` 5/5 static
+pages (font bundles locally).
 
 - Re-audit disposition: B1–B10 Fixed; B11 partially (focus restore + J/K done,
   full roving-tabindex not needed — native buttons suffice); B12–B15 Fixed;
@@ -240,6 +268,7 @@ F10 (effort/risk), F11 standalone (folded into C).
 | Name | Why |
 |---|---|
 | `next-themes` | Light/dark/system theme with no-flash SSR support + header toggle (Phase C requirement) |
+| `@fontsource-variable/inter` | Self-hosted Inter Variable (approved Linear-Dark theme); woff2 bundled at install time, no build-time network fetch |
 
 (`cmdk` deliberately NOT added — shortcuts are a lightweight key handler +
 `?` dialog; no palette ranking needed. No animation library — CSS

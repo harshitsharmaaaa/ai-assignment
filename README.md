@@ -28,10 +28,12 @@ LeadFlow is a single-screen lead management tool (a lightweight CRM) built as a 
 
 A frontend-only polish pass (see `002_impl.md` for the audit, decisions and
 per-phase log). No API, schema or contract changes: every feature above runs
-on the existing endpoints.
+on the existing endpoints. Theme direction is **Linear Dark** (near-black
+neutrals, indigo accent, hairline borders, dot status badges) — picked from
+a shortlist of four researched CRM styles.
 
 - Design tokens (CSS variables) for color/radius/shadow, light + dark themes,
-  12/14/16/20/24 type scale with tabular numerals, 180 ms motion gated on
+  Inter typeface with tabular numerals, 180 ms motion gated on
   `prefers-reduced-motion`, responsive from 360 px (max content width on large
   screens).
 - Lead rows with avatar/initials chip, follow-up chips (Today / Overdue /
