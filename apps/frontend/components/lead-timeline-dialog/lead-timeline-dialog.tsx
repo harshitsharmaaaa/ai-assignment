@@ -251,7 +251,7 @@ export function LeadTimelineDialog({ lead: liveLead, leadId, onClose }: Props) {
                   <h3 className="sticky top-0 z-10 -mx-0.5 bg-background/95 py-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase backdrop-blur">
                     {group.label}
                   </h3>
-                  <ul className="relative space-y-2 border-l-2 border-muted pl-0">
+                  <ul>
                     {group.items.map((item, idx) => (
                       <TimelineItem
                         key={item.id}
