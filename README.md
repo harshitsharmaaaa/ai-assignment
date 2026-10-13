@@ -4,6 +4,101 @@ LeadFlow is a single-screen lead management tool (a lightweight CRM) built as a 
 
 ![Lead list with pinned follow-ups](docs/list-pinned.png)
 
+## How to run this project
+
+Everything runs from the **repo root** — there is no per-app setup. Pick one of the three paths below, then use the **Verification** and **Commands** sections.
+
+### What you need installed first
+
+| Tool | Version | Why | Install |
+|---|---|---|---|
+| Bun | 1.3.9 (repo pins it via `packageManager`) | Package manager + scripts + test runner for the whole monorepo | <https://bun.sh> (or `npm install -g bun`) |
+| Node.js | 20+ | Required by Next.js / tooling | <https://nodejs.org> |
+| Docker Desktop | current stable | Runs Postgres (Path A) or the whole stack (Path B) | <https://www.docker.com/products/docker-desktop/> |
+
+Run `bun --version` and `docker --version` first — both should print versions before you continue.
+
+### Path A — local dev: Bun toolchain + Postgres in Docker (recommended)
+
+You build and run the frontend/backend yourself; only the database runs in Docker. This gives you hot-reload on both apps and is the fastest daily loop.
+
+```powershell
+bun install                              # install all workspace dependencies
+Copy-Item .env.example .env              # create the env file (already filled with working defaults)
+bun run db:up                            # start Postgres 16 in Docker on localhost:5432
+bun run db:migrate                       # create the database tables (first run only)
+bun run db:seed                          # load 7 demo leads with discussions (idempotent)
+bun run dev                              # start frontend (:3000) + backend (:4000)
+```
+
+On macOS/Linux the same commands work in bash (`cp .env.example .env`, etc.).
+
+### Path B — everything in Docker Compose
+
+One command builds and runs Postgres + backend + frontend as containers. No local Bun toolchain needed beyond Docker.
+
+```powershell
+Copy-Item .env.example .env
+docker compose up --build
+```
+
+To also load the demo data on first start:
+
+```powershell
+$env:SEED = "true"; docker compose up --build
+```
+
+(bash: `SEED=true docker compose up --build`)
+
+### Path C — no Docker at all
+
+Install Postgres 16 locally, create a database and user, point `.env` at it, then run the same commands as Path A from step 3 onward (`db:migrate`, `db:seed`, `dev`). In `.env`:
+
+```
+DATABASE_URL=postgresql://USER:PASSWORD@localhost:5432/leadflow
+```
+
+### Verify it is running
+
+| Check | Expected |
+|---|---|
+| Open <http://localhost:3000> in the browser | Lead list loads; seeded leads show with the pinned "Today's follow-ups" section on top |
+| `curl http://localhost:4000/health` (bash) | `{"status":"ok"}` |
+| Open a lead, add a note with a follow-up | Timeline updates instantly; the lead's follow-up chip appears in the list behind |
+| Press `N` in the browser | Add Lead dialog opens |
+
+Ports: frontend **3000**, backend **4000**, Postgres **5432** (Path A/C only). If a port is taken, change it in `.env` (see the env table below) and restart.
+
+### Common commands (run from the repo root)
+
+| Command | What it does | When |
+|---|---|---|
+| `bun install` | Install/refresh all workspace dependencies | once, after clone; again after pulling dependency changes |
+| `bun run dev` | Start frontend + backend with hot reload | daily development |
+| `bun run build` | Production build of every package | before commits / CI |
+| `bun run start` | Serve the production build on :3000 | after `bun run build` |
+| `bun run lint` | ESLint across all packages | before commits |
+| `bun run typecheck` | TypeScript check across all packages | before commits |
+| `bun run test` | All tests (frontend unit + backend API) | needs Postgres up + migrated |
+| `bun test` (inside `apps/frontend`) | Frontend unit tests only — no database needed | quick UI-logic check |
+| `bun run db:up` / `bun run db:down` | Start / stop the Postgres container | Path A |
+| `bun run db:migrate` | Create/apply database migrations | first run, or after schema changes |
+| `bun run db:seed` | Wipe + reload the 7 demo leads (idempotent) | whenever you want fresh demo data |
+| `bun run db:studio` | Prisma Studio GUI on the database | inspecting data |
+| `docker compose down` | Stop everything (Path B) | finishing a session |
+
+`dev`, `build`, `lint`, `typecheck`, `test` are Turborepo tasks: they run in every workspace that defines them, cache results, and can be filtered, e.g. `bunx turbo run dev --filter=@leadflow/frontend`.
+
+### Troubleshooting
+
+**Docker Desktop fails with `request returned Internal Server Error ... dockerDesktopLinuxEngine`** (Windows): the Linux engine is wedged, not the repo. Quit Docker Desktop from the tray, run `wsl --shutdown`, start Docker Desktop again, wait for the green whale, retry. If it persists: free disk space (engine builds need a few GB), then update Docker Desktop; last resort `wsl --unregister docker-desktop` (Docker recreates the distro; local DB data is expendable — re-seed afterwards).
+
+**Port already in use** (`EADDRINUSE 3000/4000/5432`): stop the conflicting process or change `PORT` / `NEXT_PUBLIC_API_URL` / `POSTGRES_*` in `.env`.
+
+**Frontend shows "Could not load leads"**: backend not running or `NEXT_PUBLIC_API_URL` wrong — check `GET http://localhost:4000/health`.
+
+**Migrations fail**: make sure Postgres is reachable (`bun run db:up` healthy) before `db:migrate`.
+
 ## Features
 
 - Lead list with name, company, status badge, last note (line-clamped) and "time ago"
@@ -67,49 +162,9 @@ a shortlist of four researched CRM styles.
 | Zod in `@leadflow/shared` | One validation source for API and forms |
 | `bun test` + `node:test` | Zero-dependency tests that typecheck with the existing `@types/node` |
 
-## Prerequisites
-
-- Bun (repo pins `bun@1.3.9` via `packageManager`)
-- Node 20+
-- Docker + Docker Compose (for the database, and for the full-stack path)
-
-## Quick start (local dev)
-
-Verified from a clean checkout (needs Docker running for the database step):
-
-```bash
-bun install
-cp .env.example .env
-bun run db:up        # starts postgres:16 on :5432
-bun run db:migrate   # applies migrations (creates them on first run with --name init)
-bun run db:seed      # 7 demo leads with discussions (idempotent)
-bun run dev          # frontend :3000 + backend :4000
-```
-
-Then open http://localhost:3000 and check `GET http://localhost:4000/health` → `{"status":"ok"}`.
-
-Other commands: `bun run build`, `bun run lint`, `bun run typecheck`, `bun run test`, `bun run db:studio`, `bun run db:down`.
-
-## Quick start (Docker Compose)
-
-From a clean clone (needs only Docker):
-
-```bash
-cp .env.example .env
-docker compose up --build
-```
-
-This builds the backend and frontend images, runs `prisma migrate deploy` on backend start, and serves the app on http://localhost:3000 (API on :4000). To seed demo data on first start:
-
-```bash
-SEED=true docker compose up --build
-```
-
-(PowerShell: `$env:SEED="true"; docker compose up --build`.) Local dev with only postgres in Docker keeps working via `bun run db:up`.
-
 ## Environment variables
 
-Single root `.env` is the source of truth (see `.env.example`).
+Single root `.env` is the source of truth (see `.env.example`). All defaults work out of the box for Path A and B — you only need to edit values to change ports or credentials.
 
 | Name | Example | Used by | Description |
 |---|---|---|---|
@@ -117,7 +172,7 @@ Single root `.env` is the source of truth (see `.env.example`).
 | `POSTGRES_PASSWORD` | `leadflow_dev_pw` | compose | Placeholder only — change for real use |
 | `POSTGRES_DB` | `leadflow` | compose | Database name |
 | `DATABASE_URL` | `postgresql://leadflow:leadflow_dev_pw@localhost:5432/leadflow` | db, backend, Prisma CLI | Connection string (in compose the backend uses the `postgres` hostname variant) |
-| `PORT` | `4000` | backend | Listen port |
+| `PORT` | `4000` | backend | Backend listen port |
 | `WEB_ORIGIN` | `http://localhost:3000` | backend | CORS allowlist (frontend origin) |
 | `NODE_ENV` | `development` | backend | `development` \| `test` \| `production` (controls stack-trace leaking) |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:4000` | frontend | Backend base URL, inlined at Next.js build time (compose passes it as a build arg) |
@@ -141,6 +196,7 @@ leadflow/
     tsconfig/ / eslint-config/   Shared strict TS and flat ESLint configs.
   docs/         Screenshots of the working flow.
   docker-compose.yml   postgres + backend + frontend (postgres-only dev still works).
+  turbo.json   Turborepo pipeline; root package.json exposes dev/build/lint/typecheck/test + db:* scripts.
 ```
 
 ## API reference
@@ -195,6 +251,7 @@ bunx --filter @leadflow/frontend bun test   # + 17 UI-logic tests (presets, sort
 ```
 
 - `apps/frontend/lib/lead-utils.test.ts`: `isDueToday`/`isOverdue`/`isPinned`/`partitionLeads` with a fixed `now` (due later/earlier today, previous day, tomorrow, null, WON/LOST, ordering, no duplication).
+- `apps/frontend/lib/{followup-presets,lead-sort,timeline-group,view-prefs}.test.ts`: pure helpers for the v2 UI (preset math, sorting, day grouping, prefs sanitization). These run without a database.
 - `apps/backend/src/services/leads.service.test.ts`: 4.2 rules (set/clear/leave-unchanged), newest-first timeline, 404s, PATCH-clear. Needs postgres up and migrated (`bun run db:up && bun run db:migrate`); tests create `__test__`-tagged leads and delete them afterwards.
 - Manual smoke test: scripted Chromium run covered pinned section, dialog open, add-note (with/without follow-up + clearing), status change, add-lead, filter, search, empty state + retry paths — see `docs/`.
 
