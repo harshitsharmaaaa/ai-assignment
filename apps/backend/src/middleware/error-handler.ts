@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import { Prisma } from "@leadflow/db";
 import { ZodError } from "zod";
 import { AppError } from "../lib/app-error.js";
+import { formatZodIssues } from "../lib/validation.js";
 
 type ErrorBody = {
   error: { code: string; message: string; details?: unknown };
@@ -23,18 +24,10 @@ export function errorHandler(
 
   if (err instanceof ZodError) {
     send(res, 400, {
-      error: { code: "VALIDATION_ERROR", message: "Invalid request", details: err.flatten() },
-    });
-    return;
-  }
-
-  // validate() forwards a plain object (not AppError) for aggregated failures
-  if (err?.isValidation === true) {
-    send(res, 400, {
       error: {
-        code: err.code ?? "VALIDATION_ERROR",
-        message: err.message ?? "Invalid request",
-        details: err.details,
+        code: "VALIDATION_ERROR",
+        message: "Invalid request",
+        details: formatZodIssues(err),
       },
     });
     return;
@@ -44,6 +37,12 @@ export function errorHandler(
     const body: ErrorBody = { error: { code: err.code, message: err.message } };
     if (err.details !== undefined) body.error.details = err.details;
     send(res, err.statusCode, body);
+    return;
+  }
+
+  // Malformed JSON body (thrown by express.json before routing).
+  if (err?.type === "entity.parse.failed") {
+    send(res, 400, { error: { code: "INVALID_JSON", message: "Malformed JSON body" } });
     return;
   }
 

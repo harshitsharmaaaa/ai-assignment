@@ -106,6 +106,7 @@
         "@leadflow/eslint-config": "workspace:*",
         "@leadflow/tsconfig": "workspace:*",
         "eslint": "^9.0.0",
+        "tsup": "^8.3.0",
         "typescript": "^5.9.0",
       },
     },

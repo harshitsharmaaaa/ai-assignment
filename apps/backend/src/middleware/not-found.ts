@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
 
 export function notFound(_req: Request, res: Response): void {
-  res.status(404).json({ error: { code: "NOT_FOUND", message: "Route not found" } });
+  res.status(404).json({ error: { code: "ROUTE_NOT_FOUND", message: "Route not found" } });
 }

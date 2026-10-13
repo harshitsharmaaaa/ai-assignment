@@ -1,5 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import type { ZodType } from "zod";
+import { AppError } from "../lib/app-error.js";
+import { formatZodIssues } from "../lib/validation.js";
 
 type Schemas = {
   body?: ZodType;
@@ -7,43 +9,57 @@ type Schemas = {
   params?: ZodType;
 };
 
+/**
+ * Express 5 exposes `req.query` as a getter-only property, so plain
+ * assignment throws in ESM strict mode. Assign directly where possible and
+ * fall back to an own-property definition.
+ */
+function assignSafely(req: Request, key: "body" | "query" | "params", value: unknown): void {
+  try {
+    (req as unknown as Record<string, unknown>)[key] = value;
+  } catch {
+    Object.defineProperty(req, key, { value, writable: true, configurable: true });
+  }
+}
+
 export function validate(schemas: Schemas) {
   return (req: Request, _res: Response, next: NextFunction): void => {
-    const details: Record<string, unknown> = {};
+    const details: { path: string; message: string }[] = [];
 
     if (schemas.body) {
       const parsed = schemas.body.safeParse(req.body);
       if (!parsed.success) {
-        details["body"] = parsed.error.flatten();
+        details.push(...formatZodIssues(parsed.error, "body"));
       } else {
-        req.body = parsed.data;
+        assignSafely(req, "body", parsed.data);
       }
     }
     if (schemas.query) {
       const parsed = schemas.query.safeParse(req.query);
       if (!parsed.success) {
-        details["query"] = parsed.error.flatten();
+        details.push(...formatZodIssues(parsed.error, "query"));
       } else {
-        req.query = parsed.data as typeof req.query;
+        assignSafely(req, "query", parsed.data);
       }
     }
     if (schemas.params) {
       const parsed = schemas.params.safeParse(req.params);
       if (!parsed.success) {
-        details["params"] = parsed.error.flatten();
+        details.push(...formatZodIssues(parsed.error, "params"));
       } else {
-        req.params = parsed.data as typeof req.params;
+        assignSafely(req, "params", parsed.data);
       }
     }
 
-    if (Object.keys(details).length > 0) {
-      next({
-        statusCode: 400,
-        code: "VALIDATION_ERROR",
-        message: "Invalid request",
-        details,
-        isValidation: true,
-      } as const);
+    if (details.length > 0) {
+      next(
+        new AppError({
+          statusCode: 400,
+          code: "VALIDATION_ERROR",
+          message: "Invalid request",
+          details,
+        }),
+      );
       return;
     }
     next();
