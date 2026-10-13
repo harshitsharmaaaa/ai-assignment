@@ -10,18 +10,32 @@ export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
   LOST: "Lost",
 };
 
-/** Badge color classes per status (spec 4.1). Static literals so Tailwind picks them up. */
+/**
+ * Linear-style badges (spec 4.1 hues): translucent tint + dot, no saturated
+ * fills, so follow-up state (amber/red) always wins. Static literals so
+ * Tailwind picks them up. Text tones target WCAG AA on both themes.
+ */
 export const LEAD_STATUS_BADGE_CLASSES: Record<LeadStatus, string> = {
-  NEW: "border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300",
+  NEW: "border-transparent bg-slate-500/10 text-slate-600 dark:text-slate-300",
   CONTACTED:
-    "border-blue-200 bg-blue-100 text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200",
+    "border-transparent bg-blue-500/10 text-blue-700 dark:text-blue-300",
   QUALIFIED:
-    "border-violet-200 bg-violet-100 text-violet-800 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-200",
+    "border-transparent bg-violet-500/10 text-violet-700 dark:text-violet-300",
   PROPOSAL_SENT:
-    "border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200",
-  WON: "border-green-200 bg-green-100 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200",
+    "border-transparent bg-amber-500/10 text-amber-800 dark:text-amber-300",
+  WON: "border-transparent bg-green-500/10 text-green-700 dark:text-green-300",
   // Muted rose: recognizably red-ish but distinct from the overdue red.
-  LOST: "border-rose-200 bg-rose-100 text-rose-700 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-300",
+  LOST: "border-transparent bg-rose-500/10 text-rose-700 dark:text-rose-300",
+};
+
+/** 6px status dot shown inside the badge (same hue family). */
+export const LEAD_STATUS_DOT_CLASSES: Record<LeadStatus, string> = {
+  NEW: "bg-slate-400",
+  CONTACTED: "bg-blue-500",
+  QUALIFIED: "bg-violet-500",
+  PROPOSAL_SENT: "bg-amber-500",
+  WON: "bg-green-500",
+  LOST: "bg-rose-400",
 };
 
 export const LEAD_STATUS_OPTIONS: { value: LeadStatus; label: string }[] = LEAD_STATUSES.map(
