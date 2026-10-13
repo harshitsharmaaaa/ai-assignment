@@ -1,191 +1,185 @@
 # LeadFlow
 
-Single-screen lead management tool (lightweight CRM) — take-home assessment scaffolding.
+LeadFlow is a single-screen lead management tool (a lightweight CRM) built as a take-home assessment. A sales rep tracks leads on one page: the list shows each lead's name, status badge, last discussion note and relative time, follow-ups due today are pinned on top, clicking a lead opens its timeline dialog to read history, log notes, set follow-ups and change status, and a dialog adds new leads.
 
-> Scope of this repo state: **skeleton only, green build**. No lead list UI, no business logic yet. Just a clean Turborepo + Bun monorepo with a running Next.js frontend and Express backend, Prisma/Postgres wiring, shared Zod schemas, and tooling.
+![Lead list with pinned follow-ups](docs/list-pinned.png)
 
-## Stack
+## Features
 
-- **Monorepo:** Turborepo, **Bun** as package manager / workspace manager (`packageManager` field), Node 20+ runtime
-- **Language:** TypeScript everywhere (strict mode)
-- **apps/frontend:** Next.js (App Router) + Tailwind CSS + shadcn/ui (`dialog`, `button`, `badge`, `input`, `select`, `textarea`, `label`) + TanStack Query + date-fns
-- **apps/backend:** Express 5 + TypeScript (`tsx watch` dev, `tsc` build)
-- **packages/db:** PostgreSQL + Prisma ORM (latest stable, v7 pattern) + Prisma Migrate. Owns schema, migrations, generated client, seed.
-- **Validation:** Zod, schemas shared between frontend and backend
-- **packages/shared:** Zod schemas, inferred TS types, constants (lead statuses)
-- **packages/tsconfig / packages/eslint-config:** shared configs
-- **Infra:** docker-compose postgres:16, ESLint + Prettier, single root `.env` source of truth
+- Lead list with name, company, status badge, last note (line-clamped) and "time ago"
+- Today's follow-ups pinned in their own section, sorted by due time
+- Overdue follow-ups highlighted red (except on closed leads)
+- Status filter (All + 6 statuses) and debounced name/company search
+- Timeline dialog: newest-first history, status change, clear follow-up, add-note form with optional follow-up and character counter
+- Add Lead dialog with client + server validation
+- REST API with Zod validation and a consistent `{ error: { code, message, details } }` shape
+- Idempotent seed (7 leads covering pinned, overdue, future, won, lost, empty-history)
+- Full-stack Docker Compose plus local-dev flow
+- Unit + API tests (`bun run test`)
+
+## Tech stack and why
+
+| Choice | Why |
+|---|---|
+| Bun + Turborepo monorepo | One toolchain for workspaces, scripts and caching; `bun run dev/build/test` from the root |
+| Next.js 15 (App Router) + Tailwind v4 + shadcn/ui | Single-screen app, server components by default, accessible primitives via the shadcn CLI |
+| Express 5 + TypeScript | The prompt preferred FastAPI, but Express was chosen deliberately: TypeScript end-to-end with Zod schemas shared between frontend and backend, one language across the repo |
+| Prisma 7 + Postgres 16 | Typed ORM with migrations; the `db` package owns schema, client and seed |
+| TanStack Query | List/timeline caching with instant cache updates on mutation |
+| Zod in `@leadflow/shared` | One validation source for API and forms |
+| `bun test` + `node:test` | Zero-dependency tests that typecheck with the existing `@types/node` |
 
 ## Prerequisites
 
-- Bun (pinned via `packageManager`, tested with 1.3.9)
+- Bun (repo pins `bun@1.3.9` via `packageManager`)
 - Node 20+
-- Docker + Docker Compose (tested with Docker 26.1.4 / Compose v2.27.1)
-- Git
+- Docker + Docker Compose (for the database, and for the full-stack path)
 
-## Quickstart (exact setup steps)
+## Quick start (local dev)
+
+Verified from a clean checkout (needs Docker running for the database step):
 
 ```bash
-# 1. Install (also generates Prisma client via postinstall)
 bun install
-
-# 2. Env (single source of truth at root)
 cp .env.example .env
-
-# 3. Start DB
-docker compose up -d postgres
-
-# 4. Migrate (creates `init` migration on first run, then applies)
-bun run db:migrate
-
-# 5. Seed (stub for now — real 5+ leads data comes later)
-bun run db:seed
-
-# 6. Run dev (frontend :3000, backend :4000)
-bun run dev
+bun run db:up        # starts postgres:16 on :5432
+bun run db:migrate   # applies migrations (creates them on first run with --name init)
+bun run db:seed      # 7 demo leads with discussions (idempotent)
+bun run dev          # frontend :3000 + backend :4000
 ```
 
-Verify:
+Then open http://localhost:3000 and check `GET http://localhost:4000/health` → `{"status":"ok"}`.
 
-- `GET http://localhost:4000/health` → `{ "status": "ok" }`
-- `GET http://localhost:3000` renders placeholder `LeadFlow` heading
+Other commands: `bun run build`, `bun run lint`, `bun run typecheck`, `bun run test`, `bun run db:studio`, `bun run db:down`.
 
-Other useful commands:
+## Quick start (Docker Compose)
+
+From a clean clone (needs only Docker):
 
 ```bash
-bun run build      # turbo build (db:generate runs first)
-bun run lint       # turbo lint
-bun run typecheck  # turbo typecheck (db:generate runs first)
-docker compose up -d postgres   # via bun run db:up
-docker compose down             # via bun run db:down
-bun run db:generate  # prisma generate
-bun run db:studio    # prisma studio
+cp .env.example .env
+docker compose up --build
 ```
+
+This builds the backend and frontend images, runs `prisma migrate deploy` on backend start, and serves the app on http://localhost:3000 (API on :4000). To seed demo data on first start:
+
+```bash
+SEED=true docker compose up --build
+```
+
+(PowerShell: `$env:SEED="true"; docker compose up --build`.) Local dev with only postgres in Docker keeps working via `bun run db:up`.
+
+## Environment variables
+
+Single root `.env` is the source of truth (see `.env.example`).
+
+| Name | Example | Used by | Description |
+|---|---|---|---|
+| `POSTGRES_USER` | `leadflow` | compose | Postgres superuser for local dev |
+| `POSTGRES_PASSWORD` | `leadflow_dev_pw` | compose | Placeholder only — change for real use |
+| `POSTGRES_DB` | `leadflow` | compose | Database name |
+| `DATABASE_URL` | `postgresql://leadflow:leadflow_dev_pw@localhost:5432/leadflow` | db, backend, Prisma CLI | Connection string (in compose the backend uses the `postgres` hostname variant) |
+| `PORT` | `4000` | backend | Listen port |
+| `WEB_ORIGIN` | `http://localhost:3000` | backend | CORS allowlist (frontend origin) |
+| `NODE_ENV` | `development` | backend | `development` \| `test` \| `production` (controls stack-trace leaking) |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:4000` | frontend | Backend base URL, inlined at Next.js build time (compose passes it as a build arg) |
+| `SEED` | `false` | backend container | Seed demo data on container start when `"true"` |
 
 ## Project structure
 
-```text
+```
 leadflow/
   apps/
-    frontend/   # Next.js App Router, single page at app/page.tsx ("LeadFlow" heading)
-            # components/{lead-list,lead-timeline-dialog,add-lead-dialog,status-badge}/
-            # lib/api-client.ts, lib/utils.ts, hooks/ — ready, filled later
-            # Depends on @leadflow/shared only (never @leadflow/db)
-    backend/   # Express 5 API. Only GET /health now; /api/leads + /api/discussions stub routers
-            # src/{index.ts,app.ts,config/env.ts,lib/app-error.ts}
-            # src/{routes,controllers,services,middleware} — controllers/services .gitkeep for later
-            # Imports prisma ONLY from @leadflow/db (no schema/migrations/client here)
+    backend/    Express 5 API: routes -> controllers -> services -> @leadflow/db.
+                Zod env, validate() middleware, AppError + central error handler,
+                404 handler, dev request logger. No Prisma schema/client setup here.
+    frontend/   Next.js App Router: leads-screen, lead-list, lead-timeline-dialog,
+                add-lead-dialog, status-badge, filters, hooks (TanStack Query),
+                lib (api-client, lead-status, lead-utils, query-keys). Never imports @leadflow/db.
   packages/
-    db/        # @leadflow/db — owns Prisma schema, migrations, generated client, seed
-               # prisma/schema.prisma, prisma/migrations/, prisma/seed.ts (stub)
-               # src/client.ts (singleton), src/index.ts (re-exports)
-    shared/    # @leadflow/shared — Zod schemas, inferred types, lead status constants
-    tsconfig/  # @leadflow/tsconfig — shared base/nextjs/node configs
-    eslint-config/ # @leadflow/eslint-config — shared base/next/node configs
-  docker-compose.yml  # postgres:16 + named volume + healthcheck (+ commented backend/frontend for later)
-  turbo.json
-  package.json
-  .env.example
-  README.md
+    db/         Prisma 7 schema, migrations, generated client, seed. Exports prisma,
+                PrismaClient, LeadStatus, types and the Prisma namespace (dist via tsup + tsc).
+    shared/     Zod request/response schemas + inferred types + lead status constants.
+    tsconfig/ / eslint-config/   Shared strict TS and flat ESLint configs.
+  docs/         Screenshots of the working flow.
+  docker-compose.yml   postgres + backend + frontend (postgres-only dev still works).
 ```
 
-What each app/package is for:
+## API reference
 
-| Path | Purpose |
-|------|---------|
-| `apps/frontend` | User-facing single-screen CRM. TanStack Query provider + typed `api-client.ts` (`NEXT_PUBLIC_API_URL`) ready for list/timeline caching later. |
-| `apps/backend` | REST API. Zod-validated env, `validate({body,query,params})` middleware, `AppError` + central error handler (Zod→400, P2025→404, P2002→409), 404 handler, CORS via `WEB_ORIGIN`. Express 5 native async forwarding. |
-| `packages/db` | DB ownership boundary. Backend never touches Prisma CLI directly. |
-| `packages/shared` | Single source for `LeadStatus` + Lead/Discussion Zod shapes used by both ends. |
-| `packages/tsconfig`, `packages/eslint-config` | DRY strict TS + lint. |
+Base path `/api`. JSON in/out. Timestamps are ISO 8601 UTC strings.
 
-## Domain model (Prisma + Zod mirror)
+| Method | Path | Body / Query | Success | Errors |
+|---|---|---|---|---|
+| GET | `/health` | | 200 `{status:"ok"}` | |
+| GET | `/api/leads` | `?status=&search=` | 200 `{ data: LeadListItem[] }` | 400 invalid query |
+| POST | `/api/leads` | createLeadSchema | **201** `{ data: Lead }` | 400 |
+| GET | `/api/leads/:id` | | 200 `{ data: Lead }` | 400 bad id, 404 |
+| PATCH | `/api/leads/:id` | updateLeadSchema | 200 `{ data: LeadListItem }` | 400, 404 |
+| GET | `/api/leads/:id/discussions` | | 200 `{ data: DiscussionItem[] }` newest first | 400, 404 |
+| POST | `/api/leads/:id/discussions` | createDiscussionSchema | **201** `{ data: { discussion, lead } }` | 400, 404 |
 
-- enum `LeadStatus`: `NEW, CONTACTED, QUALIFIED, PROPOSAL_SENT, WON, LOST`
-- `Lead`: `id` String uuid default, `name` required, `company?`, `phone?`, `status` default `NEW`, `nextFollowUpAt?`, `createdAt` now, `updatedAt` auto, `discussions[]`
-- `Discussion`: `id` uuid default, `leadId` FK → Lead cascade, `note` required, `createdAt` now
-- Indexes: `@@index([leadId, createdAt(sort: Desc)])` on Discussion, `@@index([nextFollowUpAt])` on Lead
-- `@@map("leads")` / `@@map("discussions")` + `@map` snake_case columns
+`LeadListItem = Lead & { lastDiscussion: { note, createdAt } | null }`. List is activity-ordered (section split is a frontend concern). PATCH/POST-discussion return the updated `LeadListItem` for instant cache updates. Error codes: `VALIDATION_ERROR` (400, `details` = `[{path, message}]`), `NOT_FOUND` (404), `ROUTE_NOT_FOUND` (404), `CONFLICT` (409), `INVALID_JSON` (400), `INTERNAL_ERROR` (500, generic message).
 
-## Scripts table
+```bash
+curl -s http://localhost:4000/api/leads | head -c 300
+curl -s -X POST http://localhost:4000/api/leads \
+  -H 'content-type: application/json' \
+  -d '{"name":"Priya Nair","company":"Example Foods"}'
+curl -s -X POST http://localhost:4000/api/leads/<id>/discussions \
+  -H 'content-type: application/json' \
+  -d '{"note":"Called back, no answer","followUpAt":"2026-10-14T10:00:00.000Z"}'
+curl -s -X PATCH http://localhost:4000/api/leads/<id> \
+  -H 'content-type: application/json' \
+  -d '{"status":"CONTACTED"}'
+```
 
-### Root
+## Decisions and trade-offs
 
-| Script | What it does |
-|--------|--------------|
-| `bun run dev` | `turbo dev` — frontend + backend |
-| `bun run build` | `turbo build` |
-| `bun run lint` | `turbo lint` |
-| `bun run typecheck` | `turbo typecheck` |
-| `bun run db:up` | `docker compose up -d postgres` |
-| `bun run db:down` | `docker compose down` |
-| `bun run db:generate` | `turbo run --filter=@leadflow/db db:generate` |
-| `bun run db:migrate` | `turbo run --filter=@leadflow/db db:migrate` (`prisma migrate dev`) |
-| `bun run db:seed` | `turbo run --filter=@leadflow/db db:seed` (`prisma db seed`) |
-| `bun run db:studio` | `turbo run --filter=@leadflow/db db:studio` |
+- **Follow-up rule (4.2):** a discussion with `followUpAt` sets `nextFollowUpAt` in the same transaction; without it, a due/overdue (`<= now`) follow-up is cleared (it was just acted on), a future one is left alone. PATCH accepts a date or `null` ("Clear follow-up").
+- **"Today" is evaluated in the browser's local timezone** (`date-fns`), so pinning follows the rep's calendar day. The helper uses `isSameDay(date, now)` instead of `isToday(date)` — identical in production, but injectable-`now` makes it unit-testable.
+- **WON/LOST never pin and never show the overdue style.** `isDueToday` stays a pure date check; `isOverdue`/`isPinned` exclude closed leads.
+- **`@leadflow/db` builds to `dist` with tsup (JS bundle) + tsc (per-file `.d.ts`).** tsup's rolled-up DTS dropped the `Prisma` namespace value members (`PrismaClientKnownRequestError`); tsc declarations preserve them exactly. Consequence: backend typecheck/dev/build wait on `^build` + `^db:generate` in Turbo.
+- **`@leadflow/shared` also builds to `dist`** (deviation from the "source-only" scaffold): production `node apps/backend/dist` cannot load workspace `.ts` sources, so shared ships a tsup bundle.
+- **Prisma 7 notes:** `prisma-client` generator (old `prisma-client-js` is deprecated), `datasource.url` and `migrations.seed` live in `prisma.config.ts` (which loads the root `.env` explicitly since the CLI runs from `packages/db`), `PrismaClient` requires the `@prisma/adapter-pg` adapter, `importFileExtension = "ts"` for tsx, and `migrate dev` no longer auto-generates (Turbo `^db:generate` + `postinstall: prisma generate` cover it; postinstall tolerates a missing `.env` via a dummy-URL fallback).
+- **Backend env loading:** ESM imports hoist, so `dotenv.config()` statements in `index.ts` ran *after* `@leadflow/db` created its client (undefined `DATABASE_URL` → SASL error). Fixed with a first-imported `src/config/dotenv.ts` side-effect module (works from both `src/` and `dist/`).
+- **Express 5 `req.query` is getter-only:** `validate()` assigns via a safe helper (direct assign with `defineProperty` fallback) instead of crashing in strict mode.
+- **Frontend reads the dialog header from the live list cache** (`useLeads` in `LeadsScreen`), so status/follow-up edits reflect instantly; mutations update cached lists then invalidate to reconcile.
+- **Seed uses dates relative to now** (e.g. now+3h, now−2h) so pinned/overdue states are always demonstrable; it wipes first (idempotent).
+- **No auth, no pagination, no discussion edit/delete** — out of scope per spec.
+- **Docker:** build context is the repo root (workspace builds need all packages); backend entrypoint runs `migrate deploy`, optional `SEED=true` seed, then `node dist`. Verified with `docker compose up --build` (healthchecks green, 7 leads served).
 
-### packages/db
+## Testing
 
-| Script | Command |
-|--------|---------|
-| `db:generate` | `prisma generate` |
-| `db:migrate` | `prisma migrate dev` |
-| `db:deploy` | `prisma migrate deploy` |
-| `db:seed` | `prisma db seed` |
-| `db:studio` | `prisma studio` |
-| `build` | `tsup` (js bundle) + `tsc -p tsconfig.build.json` (per-file `.d.ts`) → `dist/` |
-| `typecheck` | `tsc --noEmit` |
+```bash
+bun run test        # turbo: 11 lead-utils unit tests + 6 API follow-up-rule tests (17 total)
+```
 
-### apps/backend
-
-| Script | Command |
-|--------|---------|
-| `dev` | `tsx watch src/index.ts` |
-| `build` | `tsc -p tsconfig.json` |
-| `start` | `node dist/index.js` |
-| `typecheck` | `tsc --noEmit` |
-
-## Env variables (root `.env`, see `.env.example`)
-
-| Var | Used by | Example |
-|-----|---------|---------|
-| `POSTGRES_USER` | compose | `leadflow` |
-| `POSTGRES_PASSWORD` | compose | `leadflow_dev_pw` (placeholder only) |
-| `POSTGRES_DB` | compose | `leadflow` |
-| `DATABASE_URL` | db + backend + prisma CLI | `postgresql://leadflow:leadflow_dev_pw@localhost:5432/leadflow` |
-| `PORT` | backend | `4000` |
-| `WEB_ORIGIN` | backend CORS | `http://localhost:3000` |
-| `NODE_ENV` | backend error handler | `development` |
-| `NEXT_PUBLIC_API_URL` | frontend api-client | `http://localhost:4000` |
-
-## Implementation plan (scaffolding steps)
-
-Planned Conventional Commits:
-
-1. `chore: initialize turborepo with bun workspaces` — root `package.json`/`turbo.json`/tsconfig/eslint/prettier/`.gitignore`/compose/`.env.example`
-2. `chore(shared): add zod schemas and lead status constants` — `packages/shared`
-3. `feat(db): add prisma schema, initial migration, and docker-compose postgres` — `packages/db` + `init` migration + stub `seed.ts`
-4. `feat(backend): scaffold express server with env validation and error handling` — `apps/backend` per folder layout + `/health`
-5. `feat(frontend): scaffold next.js app with tailwind, shadcn, and query provider` — `apps/frontend` + 7 shadcn components + Query provider + api-client
-6. `docs: add readme and env example` — this file
-
-Turbo wiring: `build`/`typecheck`/`dev` all `dependsOn: ["^build", "^db:generate"]` (`dev`/`typecheck` need `^build` too because the backend resolves `@leadflow/db` via its `dist` output), plus `@leadflow/db#build` depends on its own `db:generate`, and `globalEnv` includes `DATABASE_URL` etc. In Prisma v7 `migrate dev` no longer auto-generates, so explicit `db:generate` + `postinstall: prisma generate` covers clean clones. (`postinstall` tolerates a missing `.env` via a dummy-URL fallback in `prisma.config.ts` — generate works offline; migrate/seed still need the real DB.)
-
-Definition of done: `bun install` ✓ → `docker compose up -d postgres` + `bun run db:migrate` ✓ → `bun run dev` (3000 ok, 4000 `/health` ok) ✓ → `bun run build/lint/typecheck` ✓ → backend imports `prisma` from `@leadflow/db` (trivial typed import check proves wiring) ✓.
-
-## Decisions / deviations
-
-- **Prisma v7 (`prisma-client` generator, `prisma.config.ts`, driver adapter).** Spec says latest stable + current docs → v7. Old `prisma-client-js` is deprecated; `datasource url` moves from `schema.prisma` to `prisma.config.ts` (`datasource: { url: env("DATABASE_URL") }`); seed moves from `package.json#prisma` to `migrations: { seed: "tsx prisma/seed.ts" }`; `PrismaClient` requires `@prisma/adapter-pg` + `pg`; generator needs explicit `output` (`../src/generated/prisma`) + `importFileExtension = "ts"` for `tsx`.
-- **How `@leadflow/db` is exported: built `dist` via `tsup` (JS bundle) + `tsc` (per-file `.d.ts`) — chosen.** Alternative was exporting TS source directly (`exports: ./src/index.ts`). Rejected because `apps/backend` production `node dist/index.js` cannot load workspace `.ts` at runtime. The split build exists because `tsup`'s rolled-up DTS dropped the `Prisma` namespace value members (`PrismaClientKnownRequestError`), while `tsc --emitDeclarationOnly` preserves them exactly; runtime comes from the `tsup` bundle, types from the `tsc` declarations. Trade-off: `backend#build/typecheck/dev` must wait on `^build` + `^db:generate` via Turbo.
-- **Root `.env` loading from `packages/db`.** `dotenv/config` alone resolves relative to CWD (`packages/db`), not root. Fix: `prisma.config.ts` explicitly loads `../../.env` via `dotenv` + `path.resolve`, no `dotenv-cli` needed. Turbo `globalEnv` passes vars through.
-- **ID default: `@default(uuid(7))`** (portable, no `pgcrypto` extension needed vs `gen_random_uuid()`).
-- **Tailwind v4 + shadcn `new-york/neutral` + CSS vars**, `@/*` alias, per current `create-next-app`/`shadcn init` defaults.
-- **ESLint 9 flat config** shared via `packages/eslint-config`.
-- **Ports:** frontend 3000, backend 4000. Next.js `app/` at repo root of `apps/frontend` (spec-literal `app/page.tsx`, no `src/` dir).
+- `apps/frontend/lib/lead-utils.test.ts`: `isDueToday`/`isOverdue`/`isPinned`/`partitionLeads` with a fixed `now` (due later/earlier today, previous day, tomorrow, null, WON/LOST, ordering, no duplication).
+- `apps/backend/src/services/leads.service.test.ts`: 4.2 rules (set/clear/leave-unchanged), newest-first timeline, 404s, PATCH-clear. Needs postgres up and migrated (`bun run db:up && bun run db:migrate`); tests create `__test__`-tagged leads and delete them afterwards.
+- Manual smoke test: scripted Chromium run covered pinned section, dialog open, add-note (with/without follow-up + clearing), status change, add-lead, filter, search, empty state + retry paths — see `docs/`.
 
 ## AI usage disclosure
 
-<!-- Placeholder — fill in before submission: tools used, what was generated vs written by hand, verification steps. -->
-- Tool(s):
-- Scope of AI assistance:
-- Verification (build/lint/typecheck/migrate/dev + manual checks):
+This repo was built with AI assistance and every step was verified by running the code.
+
+- **Tools used:** OpenCode coding agent powered by Muse Spark (model `muse-spark`), plus web docs (Prisma, shadcn/ui, Turbo) for version-specific setup.
+- **What the AI generated:** the monorepo scaffold, all backend/frontend/package code, seed data, tests, Dockerfiles, this README, and the screenshots script — working from the task brief (`implementation.md`, kept untracked at the repo root) and the reviewer's spec.
+- **What was reviewed/modified by hand:** each phase ended with `bun run typecheck && bun run lint && bun run build` (plus `bun run test` from phase 9), real HTTP checks of every endpoint and error shape, scripted browser runs for the full UI flow, and a from-scratch `docker compose up --build` verification.
+- **Surprises worth knowing:** the ESM dotenv-hoisting SASL failure, Express 5 getter-only `req.query`, tsup DTS dropping Prisma namespace values, `@radix-ui/react-label@^1.1.0` not existing, and a Docker Desktop WSL-disk crash mid-project (recovered via `wsl --unregister docker-desktop`; data volume survived).
+
+Author checklist ("Reviewed and verified by me"):
+- [ ] I ran the Quick start steps verbatim on a clean machine
+- [ ] I watched the demo flow (screenshots in `docs/`)
+- [ ] I reviewed the git history and the Decisions section above
+
+## Demo
+
+No video recorded; the scripted flow is captured in `docs/`:
+
+- ![Lead list with pinned follow-ups](docs/list-pinned.png) — list with pinned section
+- ![Status filter applied](docs/filter.png) — Won filter
+- ![Lead timeline dialog](docs/timeline.png) — timeline dialog
+- ![Add lead dialog](docs/add-lead.png) — add lead dialog
+- ![Overdue lead](docs/overdue.png) — overdue state
+- ![Mobile layout](docs/mobile.png) — 390px layout
