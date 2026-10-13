@@ -167,6 +167,19 @@ mobile (390px).
    (dialog header reads the live list cache instead, per §8.3).
 4. `docs/` has 6 screenshots (adds mobile) and no video.
 
+## Phase 10 follow-up — Docker install retries
+
+`docker compose up --build` failed twice at `bun install --frozen-lockfile`
+with `IntegrityCheckFailed` / tarball-extraction errors on random large
+packages (different set each run; one earlier build had succeeded). Cause:
+flaky tarball downloads inside the Docker VM, worsened by a nearly-full VM
+disk (21 GB of other projects' dangling images; pruned) and an actual Docker
+Desktop WSL-disk crash in between. Fix: both Dockerfiles now retry
+`bun install` up to 5 times with a BuildKit cache mount on Bun's install cache
+(`BUN_INSTALL_CACHE_DIR`), so retries only re-fetch the missing packages.
+Verified: attempt 1 fetched 1292 packages with 1 failure, attempt 2 fetched
+just the missing ones and completed; all 3 services healthy afterwards.
+
 ## How to run (final state)
 
 ```bash

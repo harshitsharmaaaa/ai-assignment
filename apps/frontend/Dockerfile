@@ -3,7 +3,11 @@ FROM oven/bun:1.3 AS app
 WORKDIR /app
 
 COPY . .
-RUN bun install --frozen-lockfile
+
+# Same retry logic as apps/backend/Dockerfile (flaky big-tarball downloads).
+ENV BUN_INSTALL_CACHE_DIR=/root/.bun/install/cache
+RUN --mount=type=cache,target=/root/.bun/install/cache \
+  sh -c 'for i in 1 2 3 4 5; do bun install --frozen-lockfile && break || { echo "install attempt $i failed, retrying..."; sleep 10; }; done'
 
 # NEXT_PUBLIC_* values are inlined at build time (this is the URL the BROWSER uses).
 ARG NEXT_PUBLIC_API_URL=http://localhost:4000
