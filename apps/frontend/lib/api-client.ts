@@ -1,3 +1,13 @@
+import type {
+  CreateDiscussionInput,
+  CreateLeadInput,
+  DiscussionItem,
+  LeadListItem,
+  LeadResponse,
+  LeadStatus,
+  UpdateLeadInput,
+} from "@leadflow/shared";
+
 export type ApiErrorShape = {
   error: { code: string; message: string; details?: unknown };
 };
@@ -44,4 +54,52 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     });
   }
   return body as T;
+}
+
+export type ListLeadsParams = { status?: LeadStatus; search?: string };
+
+export async function listLeads(params: ListLeadsParams): Promise<LeadListItem[]> {
+  const q = new URLSearchParams();
+  if (params.status) q.set("status", params.status);
+  if (params.search) q.set("search", params.search);
+  const qs = q.toString();
+  const res = await apiFetch<{ data: LeadListItem[] }>(`/api/leads${qs ? `?${qs}` : ""}`);
+  return res.data;
+}
+
+export async function createLead(input: CreateLeadInput): Promise<LeadResponse> {
+  const res = await apiFetch<{ data: LeadResponse }>("/api/leads", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  return res.data;
+}
+
+export async function updateLead(id: string, input: UpdateLeadInput): Promise<LeadListItem> {
+  const res = await apiFetch<{ data: LeadListItem }>(`/api/leads/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+  return res.data;
+}
+
+export async function listDiscussions(leadId: string): Promise<DiscussionItem[]> {
+  const res = await apiFetch<{ data: DiscussionItem[] }>(`/api/leads/${leadId}/discussions`);
+  return res.data;
+}
+
+export async function addDiscussion(
+  leadId: string,
+  input: CreateDiscussionInput,
+): Promise<{ discussion: DiscussionItem; lead: LeadListItem }> {
+  const res = await apiFetch<{ data: { discussion: DiscussionItem; lead: LeadListItem } }>(
+    `/api/leads/${leadId}/discussions`,
+    { method: "POST", body: JSON.stringify(input) },
+  );
+  return res.data;
+}
+
+/** Human message for toasts; falls back to a generic message. */
+export function apiErrorMessage(err: unknown, fallback: string): string {
+  return err instanceof ApiError ? err.message : fallback;
 }
