@@ -11,6 +11,7 @@ import type {
 import {
   apiErrorMessage,
   createLead,
+  getLead,
   listLeads,
   updateLead,
 } from "@/lib/api-client";
@@ -28,6 +29,20 @@ export function useLeads(filters: LeadFilters) {
     queryKey: leadsKeys.list(filters),
     queryFn: () => listLeads(toListParams(filters)),
     placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Single-lead fallback for the timeline dialog header (B1): when the active
+ * filter/search no longer matches the open lead, the live list cache has no
+ * entry, so the dialog reads the lead directly instead of going blank.
+ */
+export function useLead(id: string | null) {
+  return useQuery({
+    queryKey: ["lead", id ?? ""] as const,
+    queryFn: () => getLead(id as string),
+    enabled: !!id,
+    staleTime: 30_000,
   });
 }
 

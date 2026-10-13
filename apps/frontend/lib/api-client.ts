@@ -67,6 +67,11 @@ export async function listLeads(params: ListLeadsParams): Promise<LeadListItem[]
   return res.data;
 }
 
+export async function getLead(id: string): Promise<LeadResponse> {
+  const res = await apiFetch<{ data: LeadResponse }>(`/api/leads/${id}`);
+  return res.data;
+}
+
 export async function createLead(input: CreateLeadInput): Promise<LeadResponse> {
   const res = await apiFetch<{ data: LeadResponse }>("/api/leads", {
     method: "POST",
