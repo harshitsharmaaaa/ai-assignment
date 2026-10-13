@@ -12,10 +12,46 @@ LeadFlow is a single-screen lead management tool (a lightweight CRM) built as a 
 - Status filter (All + 6 statuses) and debounced name/company search
 - Timeline dialog: newest-first history, status change, clear follow-up, add-note form with optional follow-up and character counter
 - Add Lead dialog with client + server validation
+- Dark mode (system default, header toggle, no flash) with WCAG-AA-tuned tokens
+- Pipeline summary strip with live per-status counts + Today/Overdue shortcuts
+- One-click follow-up snooze (+1h / Tomorrow 9am / Next week / Clear) with undo
+- Follow-up presets (Tomorrow 9am / In 3 days / Next Monday) in the note form
+- Sort (recent activity / name / next follow-up), density toggle, overdue-only filter, all remembered in localStorage
+- Keyboard shortcuts (`/` search, `N` new lead, `J`/`K` move, `Enter` open, `?` help)
+- Undo toasts for status changes and follow-up clears; `tel:` + copy-phone row actions
 - REST API with Zod validation and a consistent `{ error: { code, message, details } }` shape
 - Idempotent seed (7 leads covering pinned, overdue, future, won, lost, empty-history)
 - Full-stack Docker Compose plus local-dev flow
 - Unit + API tests (`bun run test`)
+
+## UI/UX v2
+
+A frontend-only polish pass (see `002_impl.md` for the audit, decisions and
+per-phase log). No API, schema or contract changes: every feature above runs
+on the existing endpoints.
+
+- Design tokens (CSS variables) for color/radius/shadow, light + dark themes,
+  12/14/16/20/24 type scale with tabular numerals, 180 ms motion gated on
+  `prefers-reduced-motion`, responsive from 360 px (max content width on large
+  screens).
+- Lead rows with avatar/initials chip, follow-up chips (Today / Overdue /
+  Upcoming), sticky header + filter bar, day-grouped timeline with an anchored
+  note form, row-shaped skeletons and friendly empty/error states.
+- Before shots: `docs/ui-v2/before/`. After shots: `docs/ui-v2/after/`
+  (pending a live run — Docker was down when this pass was built; the v1
+  shots in `docs/` still show the core flow).
+
+### Keyboard shortcuts
+
+| Keys | Action |
+|---|---|
+| `/` | Focus search |
+| `N` | New lead |
+| `J` / `K` | Move between leads |
+| `Enter` | Open the focused lead |
+| `Ctrl`/`Cmd`+`Enter` | Save the note (inside the timeline) |
+| `Esc` | Close the dialog |
+| `?` | Shortcut help |
 
 ## Tech stack and why
 
@@ -153,6 +189,7 @@ curl -s -X PATCH http://localhost:4000/api/leads/<id> \
 
 ```bash
 bun run test        # turbo: 11 lead-utils unit tests + 6 API follow-up-rule tests (17 total)
+bunx --filter @leadflow/frontend bun test   # + 17 UI-logic tests (presets, sort, grouping, prefs) — no DB needed
 ```
 
 - `apps/frontend/lib/lead-utils.test.ts`: `isDueToday`/`isOverdue`/`isPinned`/`partitionLeads` with a fixed `now` (due later/earlier today, previous day, tomorrow, null, WON/LOST, ordering, no duplication).
@@ -167,6 +204,7 @@ This repo was built with AI assistance and every step was verified by running th
 - **What the AI generated:** the monorepo scaffold, all backend/frontend/package code, seed data, tests, Dockerfiles, this README, and the screenshots script — working from the task brief (`implementation.md`, kept untracked at the repo root) and the reviewer's spec.
 - **What was reviewed/modified by hand:** each phase ended with `bun run typecheck && bun run lint && bun run build` (plus `bun run test` from phase 9), real HTTP checks of every endpoint and error shape, scripted browser runs for the full UI flow, and a from-scratch `docker compose up --build` verification.
 - **Surprises worth knowing:** the ESM dotenv-hoisting SASL failure, Express 5 getter-only `req.query`, tsup DTS dropping Prisma namespace values, `@radix-ui/react-label@^1.1.0` not existing, and a Docker Desktop WSL-disk crash mid-project (recovered via `wsl --unregister docker-desktop`; data volume survived).
+- **UI/UX v2 pass (this change):** the AI audited the UI (15 bugs + 10 design issues in `002_impl.md`), fixed the high/medium bugs, added the token layer + dark mode (`next-themes`), redesigned rows/timeline/states, and designed + implemented 6 frontend-only features (snooze + undo, presets, pipeline summary + overdue filter, sort + density + persisted prefs, shortcuts + help, tel:/copy actions) with 17 new unit tests. `bun run typecheck && bun run lint && bun run build` green; frontend tests 28/28. No backend/schema/API change. Docker was down during this pass, so the live browser audit, after-screenshots and full-DB test run are owed once Docker is back.
 
 Author checklist ("Reviewed and verified by me"):
 - [ ] I ran the Quick start steps verbatim on a clean machine
