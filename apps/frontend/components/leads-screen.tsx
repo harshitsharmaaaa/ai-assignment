@@ -3,11 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDownWideNarrow, Plus } from "lucide-react";
 import { AddLeadDialog } from "@/components/add-lead-dialog/add-lead-dialog";
-import { StatusFilter, type StatusValue } from "@/components/filters/status-filter";
+import { StatusFilter } from "@/components/filters/status-filter";
 import { SearchInput } from "@/components/filters/search-input";
 import { LeadList } from "@/components/lead-list/lead-list";
 import { LeadTimelineDialog } from "@/components/lead-timeline-dialog/lead-timeline-dialog";
-import { PipelineSummary } from "@/components/pipeline-summary";
 import { ShortcutsDialog } from "@/components/shortcuts-dialog";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -21,9 +20,6 @@ import {
 } from "@/components/ui/select";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useLeads } from "@/hooks/use-leads";
-import { useNow } from "@/hooks/use-now";
-import { LEAD_STATUS_OPTIONS } from "@/lib/lead-status";
-import { isOverdue, isPinned } from "@/lib/lead-utils";
 import { LEAD_SORT_OPTIONS, type LeadSortKey } from "@/lib/lead-sort";
 import type { LeadFilters } from "@/lib/query-keys";
 import {
@@ -65,27 +61,6 @@ export function LeadsScreen() {
   // no longer matches.
   const { data: leads } = useLeads(filters);
   const selectedLead = leads?.find((l) => l.id === selectedLeadId) ?? null;
-
-  // Unfiltered counts for the pipeline strip + status chips.
-  const now = useNow();
-  const { data: allLeads } = useLeads({ status: "ALL", search: "" });
-  const counts = useMemo(() => {
-    const c: Partial<Record<StatusValue, number>> = { ALL: allLeads?.length ?? 0 };
-    for (const opt of LEAD_STATUS_OPTIONS) c[opt.value] = 0;
-    for (const lead of allLeads ?? []) {
-      c[lead.status] = (c[lead.status] ?? 0) + 1;
-    }
-    return c;
-  }, [allLeads]);
-  const { todayCount, overdueCount } = useMemo(() => {
-    let today = 0;
-    let overdue = 0;
-    for (const lead of allLeads ?? []) {
-      if (isPinned(lead, now)) today += 1;
-      if (isOverdue(lead, now)) overdue += 1;
-    }
-    return { todayCount: today, overdueCount: overdue };
-  }, [allLeads, now]);
 
   // Persist view prefs (filter, sort, density, overdue toggle).
   useEffect(() => {
@@ -176,16 +151,6 @@ export function LeadsScreen() {
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <h1 className="truncate text-xl font-bold tracking-tight sm:text-2xl">LeadFlow</h1>
-            <p className="hidden text-[13px] text-muted-foreground sm:block">
-              {todayCount > 0
-                ? `${todayCount} follow-up${todayCount === 1 ? "" : "s"} due today`
-                : "Every conversation, one screen"}
-              {overdueCount > 0 && (
-                <span className="font-medium text-red-700 dark:text-red-300">
-                  {" · "}{overdueCount} overdue
-                </span>
-              )}
-            </p>
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
             <Button
@@ -256,40 +221,16 @@ export function LeadsScreen() {
                   </Button>
                 ))}
               </div>
-              <Button
-                type="button"
-                variant={prefs.overdueOnly ? "default" : "outline"}
-                size="sm"
-                aria-pressed={prefs.overdueOnly}
-                onClick={() => setPrefs((p) => ({ ...p, overdueOnly: !p.overdueOnly }))}
-                className="shrink-0 rounded-full"
-              >
-                Overdue
-                {overdueCount > 0 && (
-                  <span className="ml-0.5 text-xs tabular-nums opacity-80">{overdueCount}</span>
-                )}
-              </Button>
             </div>
           </div>
           <StatusFilter
             value={prefs.status}
             onChange={(s) => setPrefs((p) => ({ ...p, status: s }))}
-            counts={counts}
           />
         </div>
       </header>
 
       <div className="mt-4 space-y-4">
-        <PipelineSummary
-          counts={counts}
-          todayCount={todayCount}
-          overdueCount={overdueCount}
-          activeStatus={prefs.status}
-          overdueOnly={prefs.overdueOnly}
-          onSelectStatus={(s) => setPrefs((p) => ({ ...p, status: s }))}
-          onToggleOverdue={() => setPrefs((p) => ({ ...p, overdueOnly: !p.overdueOnly }))}
-        />
-
         <LeadList
           filters={filters}
           sort={prefs.sort}

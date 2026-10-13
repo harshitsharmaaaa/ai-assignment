@@ -129,7 +129,7 @@ export function LeadTimelineDialog({ lead: liveLead, leadId, onClose }: Props) {
         if (!next) onClose();
       }}
     >
-      <DialogContent className="flex max-h-[92dvh] w-[calc(100%-2rem)] flex-col gap-4 p-4 sm:max-w-xl sm:p-6">
+      <DialogContent className="flex max-h-[92dvh] w-[calc(100%-2rem)] flex-col gap-4 p-4 sm:max-w-3xl sm:p-6">
         <DialogHeader className="pr-8 text-left">
           <DialogTitle className="break-words">
             {lead?.name ?? "Lead"}
