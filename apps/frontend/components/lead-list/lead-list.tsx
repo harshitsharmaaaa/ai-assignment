@@ -12,6 +12,7 @@ import { LeadRow } from "./lead-row";
 type Props = {
   filters: LeadFilters;
   onOpen: (leadId: string) => void;
+  onClearFilters: () => void;
 };
 
 function LoadingSkeleton() {
@@ -58,7 +59,7 @@ function LeadSection({
   );
 }
 
-export function LeadList({ filters, onOpen }: Props) {
+export function LeadList({ filters, onOpen, onClearFilters }: Props) {
   const now = useNow();
   const { data, isPending, isError, error, refetch, isFetching } = useLeads(filters);
 
@@ -85,6 +86,11 @@ export function LeadList({ filters, onOpen }: Props) {
         <p className="font-medium">
           {isFiltering ? "No leads match your filters" : "No leads yet. Add your first lead."}
         </p>
+        {isFiltering && (
+          <Button type="button" variant="outline" className="mt-4" onClick={onClearFilters}>
+            Clear filters
+          </Button>
+        )}
       </div>
     );
   }

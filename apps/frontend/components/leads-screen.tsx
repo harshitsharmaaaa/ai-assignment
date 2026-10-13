@@ -42,7 +42,14 @@ export function LeadsScreen() {
         </div>
       </header>
 
-      <LeadList filters={filters} onOpen={setSelectedLeadId} />
+      <LeadList
+        filters={filters}
+        onOpen={setSelectedLeadId}
+        onClearFilters={() => {
+          setStatus("ALL");
+          setSearchInput("");
+        }}
+      />
 
       <AddLeadDialog
         open={addOpen}
