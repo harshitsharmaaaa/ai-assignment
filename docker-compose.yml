@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-leadflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-leadflow_dev_pw}
+      POSTGRES_DB: ${POSTGRES_DB:-leadflow}
+    volumes:
+      - leadflow-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-leadflow} -d ${POSTGRES_DB:-leadflow}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # --- Finalize Docker later (skeleton only) ---
+  # backend:
+  #   build: ./apps/backend
+  #   ports:
+  #     - "4000:4000"
+  #   env_file: ../.env
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  # frontend:
+  #   build: ./apps/frontend
+  #   ports:
+  #     - "3000:3000"
+  #   env_file: ../.env
+  #   depends_on:
+  #     - backend
+
+volumes:
+  leadflow-pgdata:

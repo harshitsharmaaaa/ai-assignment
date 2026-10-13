@@ -1,0 +1,44 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  importFileExtension = "ts"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL_SENT
+  WON
+  LOST
+}
+
+model Lead {
+  id             String     @id @default(uuid(7)) @map("id") @db.Uuid
+  name           String     @map("name")
+  company        String?    @map("company")
+  phone          String?    @map("phone")
+  status         LeadStatus @default(NEW) @map("status")
+  nextFollowUpAt DateTime?  @map("next_follow_up_at") @db.Timestamptz
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz
+  discussions    Discussion[]
+
+  @@index([nextFollowUpAt])
+  @@map("leads")
+}
+
+model Discussion {
+  id        String   @id @default(uuid(7)) @map("id") @db.Uuid
+  leadId    String   @map("lead_id") @db.Uuid
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  note      String   @map("note")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([leadId, createdAt(sort: Desc)])
+  @@map("discussions")
+}
