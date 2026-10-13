@@ -1,0 +1,11 @@
+{
+  "name": "@leadflow/eslint-config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./base.js",
+  "files": ["base.js", "node.js", "next.js"],
+  "peerDependencies": {
+    "eslint": "^9.0.0"
+  }
+}

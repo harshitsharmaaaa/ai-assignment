@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Builds
+dist/
+.next/
+out/
+build/
+
+# Env (single root .env is source of truth, never commit real values)
+.env
+.env.local
+.env.*.local
+
+# Turbo
+.turbo/
+
+# Prisma generated client (lives under packages/db/src/generated)
+packages/db/src/generated/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log
+.vscode/*
+!.vscode/extensions.json
+.idea/

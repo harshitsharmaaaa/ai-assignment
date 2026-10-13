@@ -1,0 +1,42 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "globalEnv": ["DATABASE_URL", "PORT", "WEB_ORIGIN", "NODE_ENV", "NEXT_PUBLIC_API_URL", "POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_DB"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build", "^db:generate"],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
+    },
+    "lint": {},
+    "typecheck": {
+      "dependsOn": ["^build", "^db:generate"]
+    },
+    "dev": {
+      "dependsOn": ["^build", "^db:generate"],
+      "cache": false,
+      "persistent": true
+    },
+    "db:generate": {
+      "cache": false
+    },
+    "db:migrate": {
+      "cache": false
+    },
+    "db:deploy": {
+      "cache": false
+    },
+    "db:seed": {
+      "cache": false
+    },
+    "db:studio": {
+      "cache": false,
+      "persistent": true
+    },
+    "@leadflow/db#build": {
+      "dependsOn": ["db:generate"],
+      "outputs": ["dist/**"]
+    },
+    "@leadflow/shared#build": {
+      "outputs": []
+    }
+  }
+}

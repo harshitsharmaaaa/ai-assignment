@@ -1,0 +1,24 @@
+{
+  "name": "leadflow",
+  "private": true,
+  "packageManager": "bun@1.3.9",
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:generate": "turbo run --filter=@leadflow/db db:generate",
+    "db:migrate": "turbo run --filter=@leadflow/db db:migrate",
+    "db:seed": "turbo run --filter=@leadflow/db db:seed",
+    "db:studio": "turbo run --filter=@leadflow/db db:studio"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "prettier": "^3.3.0",
+    "turbo": "^2.5.0",
+    "typescript": "^5.9.0"
+  }
+}
