@@ -1,0 +1,9 @@
+node_modules
+.next
+dist
+.turbo
+.env
+.git
+docs
+packages/db/src/generated
+*.tsbuildinfo
