@@ -1,49 +1,63 @@
 import { z } from "zod";
 import { leadStatusSchema } from "./constants.js";
 
-export const leadSchema = z.object({
-  id: z.string().uuid(),
-  name: z.string().min(1),
-  company: z.string().nullable().optional(),
-  phone: z.string().nullable().optional(),
-  status: leadStatusSchema.default("NEW"),
-  nextFollowUpAt: z.coerce.date().nullable().optional(),
-  createdAt: z.coerce.date(),
-  updatedAt: z.coerce.date(),
-});
+/** ISO 8601 datetime string (UTC `Z` or numeric offset), e.g. from `Date.toISOString()`. */
+export const isoDatetimeSchema = z.string().datetime({ offset: true });
+
+const emptyToUndefined = (v: unknown): unknown =>
+  typeof v === "string" && v.trim() === "" ? undefined : v;
+
+const emptyToNull = (v: unknown): unknown =>
+  typeof v === "string" && v.trim() === "" ? null : v;
+
+/** Loose phone check: digits plus `+ - ( ) . space`, 5 to 30 chars. Do not over-validate. */
+const phoneInner = z
+  .string()
+  .trim()
+  .min(5, "Phone number looks too short")
+  .max(30, "Phone number must be at most 30 characters")
+  .regex(/^[0-9+().\-\s]+$/, "Phone number contains invalid characters");
+
+const nameField = z.string().trim().min(1, "Name is required").max(120, "Name is too long");
+const companyField = z.string().trim().max(120, "Company is too long");
 
 export const createLeadSchema = z.object({
-  name: z.string().min(1, "name is required"),
-  company: z.string().optional(),
-  phone: z.string().optional(),
-  status: leadStatusSchema.default("NEW").optional(),
-  nextFollowUpAt: z.coerce.date().nullable().optional(),
+  name: nameField,
+  company: z.preprocess(emptyToUndefined, companyField.optional()),
+  phone: z.preprocess(emptyToUndefined, phoneInner.optional()),
 });
 
-export const updateLeadSchema = createLeadSchema.partial();
-
-export const discussionSchema = z.object({
-  id: z.string().uuid(),
-  leadId: z.string().uuid(),
-  note: z.string().min(1, "note is required"),
-  createdAt: z.coerce.date(),
-});
+export const updateLeadSchema = z
+  .object({
+    status: leadStatusSchema.optional(),
+    name: nameField.optional(),
+    company: z.preprocess(emptyToNull, companyField.nullable().optional()),
+    phone: z.preprocess(emptyToNull, phoneInner.nullable().optional()),
+    nextFollowUpAt: z.preprocess(emptyToNull, isoDatetimeSchema.nullable().optional()),
+  })
+  .refine((v) => Object.keys(v).length > 0, {
+    message: "At least one field is required",
+  });
 
 export const createDiscussionSchema = z.object({
-  note: z.string().min(1, "note is required"),
+  note: z.string().trim().min(1, "Note is required").max(2000, "Note is too long"),
+  followUpAt: isoDatetimeSchema.optional(),
 });
 
-export const leadIdParamsSchema = z.object({
-  id: z.string().uuid(),
-});
-
-export const leadListQuerySchema = z.object({
+export const listLeadsQuerySchema = z.object({
   status: leadStatusSchema.optional(),
-  search: z.string().optional(),
+  search: z.preprocess(
+    emptyToUndefined,
+    z.string().trim().max(100, "Search is too long").optional(),
+  ),
 });
 
-export type Lead = z.infer<typeof leadSchema>;
+export const idParamSchema = z.object({
+  id: z.string().uuid("Invalid id"),
+});
+
 export type CreateLeadInput = z.infer<typeof createLeadSchema>;
 export type UpdateLeadInput = z.infer<typeof updateLeadSchema>;
-export type Discussion = z.infer<typeof discussionSchema>;
 export type CreateDiscussionInput = z.infer<typeof createDiscussionSchema>;
+export type ListLeadsQuery = z.infer<typeof listLeadsQuerySchema>;
+export type IdParam = z.infer<typeof idParamSchema>;
